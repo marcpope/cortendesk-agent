@@ -1,0 +1,25 @@
+CortenDesk Agent
+Copyright (C) 2026 Marc Pope
+Licensed under the GNU Affero General Public License v3.0 (see LICENSE).
+
+This program includes the following third-party Go modules. Each is
+compiled into the binary under its own licence.
+
+Direct dependencies
+
+  github.com/shirou/gopsutil/v4     BSD-3-Clause
+  github.com/kardianos/service      zlib
+  golang.org/x/sys                  BSD-3-Clause
+
+Pulled in by gopsutil (only on the platforms noted)
+
+  github.com/tklauser/go-sysconf    BSD-3-Clause   (linux, darwin)
+  github.com/tklauser/numcpus       Apache-2.0     (linux, darwin)
+  github.com/ebitengine/purego      Apache-2.0     (darwin)
+  github.com/yusufpapurcu/wmi       MIT            (windows)
+  github.com/go-ole/go-ole          MIT            (windows)
+
+The Go standard library is BSD-3-Clause, Copyright The Go Authors.
+
+Full licence texts are in each module's source, available from
+https://pkg.go.dev or the module's repository.

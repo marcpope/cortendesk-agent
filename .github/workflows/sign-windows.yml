@@ -1,0 +1,81 @@
+# Builds the Windows agent and signs it with Azure Artifact Signing (publisher
+# Marcus Pope). Run by hand for a release; the signed .exe files come back as
+# a workflow artifact. The release itself (macOS, Linux, the Ed25519 update
+# manifest) is assembled from that, because signing changes the bytes the
+# manifest hashes.
+#
+# Needs repository variables AZURE_CLIENT_ID, AZURE_TENANT_ID and
+# AZURE_SIGNING_ENDPOINT, and a federated credential on that app for this
+# repository's main branch. No secrets.
+#
+# Actions are pinned to commit SHAs (the tag is in the trailing comment).
+name: Sign Windows build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Agent version, e.g. 0.2.0
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  sign:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad version $VERSION"; exit 1; }
+          mkdir -p dist
+          for arch in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=windows GOARCH=$arch go build -trimpath \
+              -ldflags "-s -w -X github.com/marcpope/cortendesk-agent/internal/version.Version=$VERSION" \
+              -o dist/cortendesk-agent_windows_$arch.exe ./cmd/cortendesk-agent
+          done
+
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          # The app's only role is on the certificate profile.
+          allow-no-subscriptions: true
+
+      - uses: azure/artifact-signing-action@c7ab2a863ab5f9a846ddb8265964877ef296ee82 # v2.0.0
+        with:
+          endpoint: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: marcpope
+          certificate-profile-name: marcpope
+          files-folder: ${{ github.workspace }}\dist
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+          description: CortenDesk Agent
+          description-url: https://github.com/marcpope/cortendesk-agent
+
+      - name: Verify
+        shell: pwsh
+        run: |
+          Get-ChildItem dist\*.exe | ForEach-Object {
+            $s = Get-AuthenticodeSignature $_.FullName
+            "$($_.Name): $($s.Status) $($s.SignerCertificate.Subject)"
+            if ($s.Status -ne 'Valid') { exit 1 }
+          }
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-signed-${{ inputs.version }}
+          path: dist/*.exe
+          if-no-files-found: error
