@@ -11,6 +11,10 @@ errors, Wi-Fi network). It opens no listening ports.
 > Very early, for testing with CortenDesk 2.0 beta. Not recommended for
 > production.
 
+The agent is completely optional. CortenDesk, its ID server, relay, web client
+and RustDesk clients all work without it. Install it only on machines you want
+to monitor, after turning on Monitoring in the console.
+
 ## Install
 
 Use **Monitoring > Add agent** in the CortenDesk console. It gives you a
