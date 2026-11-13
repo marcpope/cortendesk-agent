@@ -1,0 +1,40 @@
+# Checks every push and pull request: gofmt, go vet, the tests with the race
+# detector on the three systems the agent ships for, and govulncheck against
+# the Go vulnerability database. The weekly run catches advisories published
+# after the last push.
+#
+# Actions are pinned to commit SHAs (the tag is in the trailing comment).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '41 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        if: matrix.os == 'ubuntu-latest'
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - run: go test -race ./...
+      # Reports only the advisories this system's build can reach.
+      - run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...

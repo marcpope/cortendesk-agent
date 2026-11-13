@@ -2,7 +2,7 @@ VERSION ?= 0.1.0
 LDFLAGS := -s -w -X github.com/marcpope/cortendesk-agent/internal/version.Version=$(VERSION)
 TARGETS := windows/amd64 windows/arm64 darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
 
-.PHONY: build test dist manifest clean
+.PHONY: build test vuln dist manifest clean
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o cortendesk-agent ./cmd/cortendesk-agent
@@ -10,6 +10,10 @@ build:
 test:
 	go vet ./...
 	go test ./...
+
+# Known vulnerabilities in the Go version and modules this build uses.
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
 dist:
 	@mkdir -p dist
