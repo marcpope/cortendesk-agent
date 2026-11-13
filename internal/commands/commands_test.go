@@ -304,3 +304,18 @@ func TestAssetNames(t *testing.T) {
 		}
 	}
 }
+
+func TestAfterRunsWhateverTheResult(t *testing.T) {
+	after := 0
+	p := &posts{}
+	r := newRunner(t, p, map[string]Spec{
+		"ok":   {Timeout: time.Second, Run: func(context.Context, json.RawMessage, *Output) error { return nil }, After: func() { after++ }},
+		"boom": {Timeout: time.Second, Run: func(context.Context, json.RawMessage, *Output) error { return errors.New("broke") }, After: func() { after++ }},
+	})
+	ctx := context.Background()
+	r.Offer(ctx, []api.Command{{ID: "a", Type: "ok"}, {ID: "b", Type: "boom"}})
+	r.Drain(ctx)
+	if after != 2 {
+		t.Fatalf("After ran %d times, want 2", after)
+	}
+}

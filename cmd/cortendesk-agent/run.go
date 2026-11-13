@@ -13,6 +13,7 @@ import (
 
 	"github.com/marcpope/cortendesk-agent/internal/agent"
 	"github.com/marcpope/cortendesk-agent/internal/api"
+	"github.com/marcpope/cortendesk-agent/internal/collect"
 	"github.com/marcpope/cortendesk-agent/internal/commands"
 	"github.com/marcpope/cortendesk-agent/internal/config"
 	"github.com/marcpope/cortendesk-agent/internal/logging"
@@ -76,11 +77,16 @@ func cmdRun(args []string) error {
 		Keys: update.Keys(), Store: store, Log: log, Restart: restart,
 	}
 	handlers := map[string]commands.Spec{api.CmdAgentUpdate: {Run: updater.Run, Timeout: 15 * time.Minute}}
+	col := collect.New()
 	if !cfg.DisableCommands {
 		maps.Copy(handlers, commands.Builtin(&commands.RustDesk{WorkDir: p.Downloads}))
+		if spec, ok := handlers[api.CmdRustDeskUpgrade]; ok {
+			spec.After = col.ForgetRustDesk
+			handlers[api.CmdRustDeskUpgrade] = spec
+		}
 	}
 	runner := &agent.Runner{
-		Paths: p, Config: cfg, Log: log,
+		Paths: p, Config: cfg, Log: log, Source: col,
 		Commands:  &commands.Runner{Log: log, Store: store, Handlers: handlers},
 		OnReached: guard.Confirm,
 	}

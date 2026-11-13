@@ -62,6 +62,14 @@ func (c *Collector) identityLocked(ctx context.Context) (string, string) {
 	return c.machineUUID, c.rdID
 }
 
+// ForgetRustDesk drops the cached RustDesk state, so the next report reads
+// it again; used after an upgrade instead of waiting out rustdeskTTL.
+func (c *Collector) ForgetRustDesk() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.rdAt = time.Time{}
+}
+
 // Report gathers everything except inventory_hash, which the caller owns.
 // A failing collector leaves its fields zero; it never fails the report.
 func (c *Collector) Report(ctx context.Context) api.Report {

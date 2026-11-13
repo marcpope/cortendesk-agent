@@ -40,6 +40,8 @@ type Handler func(ctx context.Context, params json.RawMessage, out *Output) erro
 type Spec struct {
 	Run     Handler
 	Timeout time.Duration
+	// After runs once the handler returns, whatever the result. Optional.
+	After func()
 }
 
 // Runner takes commands from report responses and runs them one at a time
@@ -137,6 +139,9 @@ func (r *Runner) execute(ctx context.Context, c api.Command) {
 	runCtx, cancel := context.WithTimeout(context.WithValue(ctx, idKey{}, c.ID), spec.Timeout)
 	err := safeRun(runCtx, spec.Run, c.Params, out)
 	cancel()
+	if spec.After != nil {
+		spec.After()
+	}
 
 	if errors.Is(err, ErrResultLater) {
 		r.Log.Info("command handed off", "id", c.ID, "type", c.Type)
