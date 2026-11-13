@@ -2,7 +2,7 @@ module github.com/marcpope/cortendesk-agent
 
 go 1.27
 
-toolchain go1.27.3
+toolchain go1.27.4
 
 require (
 	github.com/kardianos/service v1.3.0
